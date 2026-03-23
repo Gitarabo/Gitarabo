@@ -408,7 +408,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="clock-day" id="clockDay">---曜日</div>
       </div>
       <div class="user-row"><div class="avatar">U</div><div class="user-name">ユーザー</div></div>
-      <div style="font-size:10px;color:#303060;text-align:right;padding-right:2px;">v3.7.0</div>
+      <div style="font-size:10px;color:#303060;text-align:right;padding-right:2px;">v3.8.0</div>
     </div>
   </div>
 
@@ -418,26 +418,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- ===== HOME ===== -->
     <div class="page active" id="page-home">
       <div class="page-title">おかえり 👋</div>
-      <!-- 初回導線バナー -->
-      <div id="startGuide" style="background:linear-gradient(135deg,var(--accent),var(--teal));border-radius:var(--radius-lg);padding:1rem 1.2rem;margin-bottom:1.2rem;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">🎸 どこから始める？</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.85);">コードを覚えたのに曲にならない人はここから👇</div>
-        </div>
-        <button onclick="document.getElementById('startGuide').style.display='none'" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">閉じる</button>
-      </div>
-      <div id="startGuideCards" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.2rem;">
-        <div onclick="goPage('lesson')" style="background:var(--bg-secondary);border:1.5px solid var(--accent);border-radius:var(--radius-md);padding:12px;cursor:pointer;">
-          <div style="font-size:20px;margin-bottom:4px;">🎵</div>
-          <div style="font-size:13px;font-weight:600;color:var(--accent);">サビを弾きたい</div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">ストローク→コード進行の順で</div>
-        </div>
-        <div onclick="goPage('chord')" style="background:var(--bg-secondary);border:1.5px solid var(--teal);border-radius:var(--radius-md);padding:12px;cursor:pointer;">
-          <div style="font-size:20px;margin-bottom:4px;">📖</div>
-          <div style="font-size:13px;font-weight:600;color:var(--teal);">コードを覚えたい</div>
-          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">コード表で押さえ方を確認</div>
-        </div>
-      </div>
+      <!-- 次の一歩バナー（動的） -->
+      <div id="nextStepBanner" style="margin-bottom:1.2rem;"></div>
 
       <div class="stats-grid">
         <div class="stat-card a-purple"><div class="stat-label">練習ストリーク</div><div class="stat-num" id="homeStreak">0<span class="stat-unit">日連続 🔥</span></div></div>
@@ -800,7 +782,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="modal-title" style="margin-bottom:4px;">曲を追加</div>
     <!-- タブ切り替え -->
     <div style="display:flex;gap:0;margin-bottom:1.25rem;border-bottom:0.5px solid var(--border);">
-      <button id="addTabAI" onclick="switchAddTab('ai')" style="flex:1;padding:8px;border:none;background:none;font-size:13px;font-family:inherit;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);font-weight:600;">Claudeに提案してもらう</button>
+      <button id="addTabAI" onclick="switchAddTab('ai')" style="flex:1;padding:8px;border:none;background:none;font-size:13px;font-family:inherit;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);font-weight:600;">自動提案で追加</button>
       <button id="addTabManual" onclick="switchAddTab('manual')" style="flex:1;padding:8px;border:none;background:none;font-size:13px;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">自分で入力する</button>
     </div>
 
@@ -812,7 +794,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div style="flex:1;"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">ギター種別</div><select class="form-select" id="newSongType" style="width:100%;" onchange="updateNewSongSubtype()"><option value="アコギ">アコギ</option><option value="エレキ">エレキ</option></select></div>
         <div style="flex:1;"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">ギタースタイル</div><select class="form-select" id="newSongSubtype" style="width:100%;"><option value="弾き語り">弾き語り</option><option value="ソロギター">ソロギター</option><option value="フィンガースタイル">フィンガースタイル</option><option value="その他">その他</option></select></div>
       </div>
-      <button class="btn-primary" id="suggestBtn" onclick="suggestSongInfo()">Claudeに情報を提案してもらう</button>
+      <button class="btn-primary" id="suggestBtn" onclick="suggestSongInfo()">自動提案を使う</button>
       <div id="aiSuggestResult"></div>
       <div id="aiConfirmArea"></div>
     </div>
@@ -1010,6 +992,56 @@ function renderHome(){
   document.getElementById('homeMonthMins').innerHTML = `${monthMins}<span class="stat-unit">分</span>`;
   document.getElementById('homeLearnedChords').innerHTML = learnedCount + '<span class="stat-unit">個</span>';
   document.getElementById('homeWeekSessions').innerHTML = `${weekSessions}<span class="stat-unit">回</span>`;
+
+  // 次の一歩バナー（状態に応じて動的に変わる）
+  const banner = document.getElementById('nextStepBanner');
+  if(banner){
+    const playable = songs.filter(s=>s.chords&&s.chords.length>0&&s.chords.every(ch=>learnedChords.includes(ch)));
+    let bannerHtml = '';
+    if(playable.length > 0){
+      // 弾ける曲がある → それを押し出す
+      const s = playable[0];
+      bannerHtml = `<div onclick="goPage('songs')" style="background:linear-gradient(135deg,#1a4a1a,#1a3a2a);border:1.5px solid var(--teal);border-radius:var(--radius-lg);padding:1rem 1.2rem;cursor:pointer;">
+        <div style="font-size:11px;color:var(--teal);margin-bottom:4px;">🎸 今すぐ弾ける曲があるぞ！</div>
+        <div style="font-size:16px;font-weight:700;color:#fff;">${s.title}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">${s.artist} · タップして確認</div>
+      </div>`;
+    } else if(learnedCount === 0){
+      // 何も覚えていない → 最初の一歩
+      bannerHtml = `<div style="background:linear-gradient(135deg,var(--accent),var(--teal));border-radius:var(--radius-lg);padding:1rem 1.2rem;">
+        <div style="font-size:12px;color:rgba(255,255,255,0.85);margin-bottom:8px;">👋 ようこそ！まず何から始める？</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div onclick="goPage('lesson')" style="background:rgba(255,255,255,0.15);border-radius:10px;padding:10px;cursor:pointer;text-align:center;">
+            <div style="font-size:18px;">🎵</div>
+            <div style="font-size:12px;font-weight:600;color:#fff;margin-top:4px;">曲を弾きたい</div>
+          </div>
+          <div onclick="goPage('chord')" style="background:rgba(255,255,255,0.15);border-radius:10px;padding:10px;cursor:pointer;text-align:center;">
+            <div style="font-size:18px;">📖</div>
+            <div style="font-size:12px;font-weight:600;color:#fff;margin-top:4px;">コードを覚える</div>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      // コードは覚えてるが弾ける曲なし → あと少しの曲を表示
+      const almost = songs.filter(s=>s.chords&&s.chords.length>0)
+        .map(s=>({s, missing:s.chords.filter(ch=>!learnedChords.includes(ch))}))
+        .filter(x=>x.missing.length>=1&&x.missing.length<=2)
+        .sort((a,b)=>a.missing.length-b.missing.length)[0];
+      if(almost){
+        bannerHtml = `<div onclick="goPage('chord')" style="background:linear-gradient(135deg,#2a1a00,#3a2a00);border:1.5px solid var(--amber);border-radius:var(--radius-lg);padding:1rem 1.2rem;cursor:pointer;">
+          <div style="font-size:11px;color:var(--amber);margin-bottom:4px;">🎯 あと少しで弾ける曲がある！</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;">${almost.s.title}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">「${almost.missing.join('・')}」を覚えれば弾けるぞ</div>
+        </div>`;
+      } else {
+        bannerHtml = `<div onclick="goPage('lesson')" style="background:linear-gradient(135deg,var(--accent),#5040c0);border-radius:var(--radius-lg);padding:1rem 1.2rem;cursor:pointer;">
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">🎵 次の一歩はコード進行！</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.8);">覚えたコードを使って曲らしく弾いてみよう</div>
+        </div>`;
+      }
+    }
+    banner.innerHTML = bannerHtml;
+  }
   const recent = [...practiceLogs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
   const list = document.getElementById('homeRecentList');
   if(!recent.length){ list.innerHTML='<div class="empty-msg">まだ練習記録がありません</div>'; }
@@ -1867,7 +1899,7 @@ async function suggestSongInfo(){
     </div>`;
     document.getElementById('aiConfirmArea').innerHTML=`<button class="btn-primary" style="width:100%;margin-top:8px;background:var(--teal);" onclick="confirmAddSong()">この内容で追加する</button>`;
   }catch(e){
-    document.getElementById('aiSuggestResult').innerHTML='<div style="background:var(--bg-secondary);border:0.5px solid var(--border-md);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text-secondary);line-height:1.7;">AI提案機能はオンライン環境が必要だぜ！<br>今すぐ追加したいなら「自分で入力する」タブから手動で追加しよう！<div style="margin-top:10px;"><button onclick="switchAddTab(\'manual\')" style="padding:6px 16px;border-radius:20px;background:var(--accent);color:#fff;border:none;font-size:12px;cursor:pointer;font-family:inherit;">手動入力タブへ →</button></div></div>';
+    document.getElementById('aiSuggestResult').innerHTML='<div style="background:var(--bg-secondary);border:0.5px solid var(--border-md);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--text-secondary);line-height:1.7;">自動提案機能はオンライン環境が必要だぜ！<br>今すぐ追加したいなら「自分で入力する」タブから手動で追加しよう！<div style="margin-top:10px;"><button onclick="switchAddTab(\'manual\')" style="padding:6px 16px;border-radius:20px;background:var(--accent);color:#fff;border:none;font-size:12px;cursor:pointer;font-family:inherit;">手動入力タブへ →</button></div></div>';
     document.getElementById('suggestBtn').disabled=false;
   }
 }
@@ -2011,48 +2043,53 @@ function runGeebo(){
   const isEvening=hour>=17&&hour<22;
   const isAfternoon=hour>=14&&hour<17;
 
-  // 練習内容の最後の1件を取得
   const lastLog=todayLogs.length>0?todayLogs[todayLogs.length-1]:null;
   const lastTitle=lastLog?lastLog.title:'';
 
   let msg='';
 
-  // 時間帯×練習量×ストリークで組み合わせてコメントを生成
+  // 練習なし → 寄り添い。どちらの選択も肯定する
   if(totalToday===0){
-    // 練習なし
-    if(isMorning)      msg=`おはよう！朝から来てくれたじゃん！<br>今日も一緒に練習していこうぜ！`;
-    else if(isNoon)    msg=`お昼休みにギタラボ覗いてくれてるのか！<br>ちょっと弾いてみる？5分でも全然OKだぜ！`;
-    else if(isAfternoon) msg=`午後だぞ！今日はまだ練習してないな。<br>ちょっとだけでも弾いたら絶対気持ちいいぜ！`;
-    else if(isEvening)  msg=`外が暗くなってきたな！<br>今日ギター触ってないなら、今がチャンスだぜ！`;
-    else if(isNight)   msg=`こんな時間にギタラボ来てくれてクールだな！<br>でも体も大事にな、無理しすぎんなよ！`;
-    else               msg=`よく来たぜ！<br>休息も上達の秘訣だぜ、焦らずいこう！`;
-    if(streak>=3)      msg+=`<br>${streak}日連続記録中だぞ、明日も来いよな！`;
-  } else if(totalToday>=360){
-    msg=`${totalToday}分！？信じられないぜ！<br>今日のお前は完全に最強だ！絶対上手くなってるぞ！`;
-    if(lastTitle) msg+=`<br>「${lastTitle}」まで練習したのか、熱すぎる！`;
+    if(isMorning)
+      msg=`おはよう！朝からギタラボ来てくれたじゃん。<br>今日弾くも、今日は休むも、どっちでも全然アリだぜ！`;
+    else if(isNoon)
+      msg=`お昼休みにのぞいてくれてありがとな。<br>ちょっと弾くのもいいし、のんびり過ごすのも最高だぜ！`;
+    else if(isAfternoon)
+      msg=`午後だな。今日の調子はどう？<br>弾きたいなら一緒にやろうぜ。休みたいならそれでOKだ！`;
+    else if(isEvening)
+      msg=`お疲れ！今日も1日頑張ったな。<br>ギター弾く気力あればいつでも来い。今日は休むのも全然アリだぜ！`;
+    else if(isNight)
+      msg=`こんな時間にギタラボ来てくれたんだな。<br>弾きたい気持ちがあるなら付き合うぜ。でも体が最優先だからな！`;
+    else
+      msg=`来てくれてよかった。<br>今日は弾いてもいいし、ただ眺めるだけでもいい。お前のペースでいこうぜ！`;
+    if(streak>=3) msg+=`<br>${streak}日続いてるの、ちゃんと見てるぞ。`;
+  }
+  // 練習した → 全力で肯定
+  else if(totalToday>=360){
+    msg=`${totalToday}分！？もうそれは本物だよ。<br>今日のお前は間違いなく昨日より上手くなってるぞ！`;
+    if(lastTitle) msg+=`<br>「${lastTitle}」まで練習したのか、熱すぎる。`;
     setGeeboFace('excited');
   } else if(totalToday>=120){
-    msg=`${totalToday}分も練習したじゃん！<br>最高すぎるぜ！この調子でいこうぜ！`;
-    if(lastTitle) msg+=`<br>「${lastTitle}」、どんどん上手くなってるな！`;
+    msg=`${totalToday}分もやったのか、すごいじゃん。<br>この積み重ねが絶対に力になってるぞ！`;
+    if(lastTitle) msg+=`<br>「${lastTitle}」、どんどん馴染んできてるはずだぜ！`;
     setGeeboFace('excited');
   } else if(totalToday>=60){
-    if(isEvening) msg=`${totalToday}分練習したぞ、えらいな！<br>夜もまだいける？無理ならゆっくり休んでな！`;
-    else          msg=`${totalToday}分しっかり練習してるじゃん！<br>続けてる姿が最高だぜ！`;
-    if(lastTitle) msg+=`<br>「${lastTitle}」の練習、続けていこうぜ！`;
+    msg=`${totalToday}分練習、お疲れ様。<br>十分すぎるくらいやったぞ！あとはゆっくり休んでな。`;
+    if(lastTitle) msg+=`<br>「${lastTitle}」の感覚、体に染み込んでるぞ！`;
   } else if(totalToday>=30){
-    msg=`${totalToday}分練習えらいぜ！<br>少しずつでも毎日続けるのが一番の上達法だからな！`;
-    if(streak>=5) msg+=`<br>${streak}日連続！その継続力が本物だぜ！`;
+    msg=`${totalToday}分、ちゃんとやったじゃん。<br>少しでも続けてるのが一番大事なんだぜ！`;
+    if(streak>=5) msg+=`<br>${streak}日連続、その継続力が本物だ。`;
   } else if(totalToday>=1){
-    msg=`${totalToday}分でも練習したのが最高だぜ！<br>少しの積み重ねが上達への道だからな！`;
-    if(isNight) msg+=`<br>こんな時間に練習とはクールだな、でも休みも忘れんなよ！`;
+    msg=`${totalToday}分でも弾いたこと、ちゃんとすごいぞ。<br>ゼロじゃないってことが大事なんだ！`;
+    if(isNight) msg+=`<br>今日もお疲れ、ゆっくり休んでな。`;
   }
 
-  // 表情の設定
-  if(totalToday>=120)       setGeeboFace('excited');
+  // 表情
+  if(totalToday>=120)        setGeeboFace('excited');
   else if(isNight||streak>=7) setGeeboFace('cool');
-  else                       setGeeboFace('encourage');
+  else                        setGeeboFace('encourage');
 
-  document.getElementById('geeboBubble').innerHTML=msg||`よく来たぜ！<br>今日も一緒に頑張っていこうぜ！`;
+  document.getElementById('geeboBubble').innerHTML=msg||`来てくれてよかった。<br>今日も一緒にいるぜ！`;
 }
 
 
