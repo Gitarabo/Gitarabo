@@ -408,7 +408,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="clock-day" id="clockDay">---曜日</div>
       </div>
       <div class="user-row"><div class="avatar">U</div><div class="user-name">ユーザー</div></div>
-      <div style="font-size:10px;color:#303060;text-align:right;padding-right:2px;">v3.8.0</div>
+      <div style="font-size:10px;color:#303060;text-align:right;padding-right:2px;">v3.9.1</div>
     </div>
   </div>
 
@@ -421,12 +421,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <!-- 次の一歩バナー（動的） -->
       <div id="nextStepBanner" style="margin-bottom:1.2rem;"></div>
 
+      <!-- 今日の1ステップ -->
+      <div id="todayStep" style="margin-bottom:1.2rem;"></div>
+
+      <!-- 弾ける曲（主役） -->
+      <div id="homePlayableSection" style="margin-bottom:1.2rem;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">🎸 今の自分で弾ける曲</div>
+        <div id="homePlayable"><div class="empty-msg" style="font-size:12px;">コード表で「覚えた！」を押すと弾ける曲が表示されるよ</div></div>
+      </div>
+
+      <!-- 統計 -->
       <div class="stats-grid">
         <div class="stat-card a-purple"><div class="stat-label">練習ストリーク</div><div class="stat-num" id="homeStreak">0<span class="stat-unit">日連続 🔥</span></div></div>
         <div class="stat-card a-teal"><div class="stat-label">今月の練習時間</div><div class="stat-num" id="homeMonthMins">0<span class="stat-unit">分</span></div></div>
         <div class="stat-card a-amber"><div class="stat-label">覚えたコード</div><div class="stat-num" id="homeLearnedChords">0<span class="stat-unit">個</span></div></div>
         <div class="stat-card a-coral"><div class="stat-label">今週のセッション</div><div class="stat-num" id="homeWeekSessions">0<span class="stat-unit">回</span></div></div>
       </div>
+
+      <!-- メニュー -->
       <div class="menu-grid">
         <div class="menu-btn" onclick="goPage('chord')"><div class="menu-icon" style="background:#ece8ff;">🎸</div><h3>コード表</h3><p>押さえ方を覚える</p></div>
         <div class="menu-btn" onclick="goPage('tuner')"><div class="menu-icon" style="background:#d4f0e8;">🎵</div><h3>チューナー</h3><p>音程チェック</p></div>
@@ -436,10 +448,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="menu-btn" onclick="goPage('timer')"><div class="menu-icon" style="background:#e8feee;">⏱</div><h3>練習タイマー</h3><p>時間を計る</p></div>
         <div class="menu-btn" onclick="goPage('geebo')"><div class="menu-icon" style="background:#eee8ff;">🎸</div><h3>ギーボ</h3><p>今日の振り返り</p></div>
       </div>
-      <div class="card">
-        <div class="card-title">🎸 今の自分で弾ける曲</div>
-        <div id="homePlayable"><div class="empty-msg" style="font-size:12px;">コード表で「覚えた！」を押すと弾ける曲が表示されるよ</div></div>
-      </div>
+
+      <!-- 最近の練習 -->
       <div class="card">
         <div class="card-title">最近の練習</div>
         <div id="homeRecentList"><div class="empty-msg">まだ練習記録がありません</div></div>
@@ -466,6 +476,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- ===== TUNER ===== -->
     <div class="page" id="page-tuner">
       <div class="page-title">クロマチックチューナー</div>
+      <div style="display:flex;gap:8px;margin-bottom:1rem;">
+        <button id="tunerAcousticBtn" onclick="setTunerMode('acoustic')" style="flex:1;padding:8px;border-radius:20px;background:var(--accent);color:#fff;border:none;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;">🎸 アコギ</button>
+        <button id="tunerElectricBtn" onclick="setTunerMode('electric')" style="flex:1;padding:8px;border-radius:20px;background:var(--bg-secondary);color:var(--text-secondary);border:0.5px solid var(--border);font-size:13px;cursor:pointer;font-family:inherit;">⚡ エレキ</button>
+      </div>
+      <div id="tunerModeDesc" style="font-size:12px;color:var(--text-secondary);background:var(--bg-secondary);border-radius:8px;padding:8px 12px;margin-bottom:1rem;">🎸 アコギモード — 生音向けに最適化。通常の感度で安定検出。</div>
       <div class="tuner-wrap">
         <div class="status-card idle" id="tunerStatus"><div class="status-dot dot-idle" id="tunerDot"></div><span id="tunerMsg">マイクを起動してください</span></div>
         <div class="vol-row" id="volRow" style="display:none">
@@ -1051,40 +1066,97 @@ function renderHome(){
       <span class="badge" style="background:var(--bg-secondary);color:var(--text-secondary);">${l.cat}</span>
     </div>`).join(''); }
 
-  // 今の自分で弾ける曲おすすめセクション
+  // ===== 今日の1ステップ =====
+  const stepEl = document.getElementById('todayStep');
+  if(stepEl){
+    const todayLogsStep = practiceLogs.filter(l=>l.date===todayStr());
+    const totalTodayStep = todayLogsStep.reduce((a,l)=>a+l.mins,0);
+    const playableForStep = songs.filter(s=>s.chords&&s.chords.length>0&&s.chords.every(ch=>learnedChords.includes(ch)));
+    const almostForStep = songs.filter(s=>s.chords&&s.chords.length>0)
+      .map(s=>({s,missing:s.chords.filter(ch=>!learnedChords.includes(ch))}))
+      .filter(x=>x.missing.length===1).sort((a,b)=>a.missing.length-b.missing.length)[0];
+
+    let stepHtml = '';
+    let stepIcon = '', stepLabel = '', stepDesc = '', stepAction = '', stepColor = '';
+
+    if(playableForStep.length > 0 && totalTodayStep === 0){
+      // 弾ける曲があるのに今日まだ練習してない
+      const s = playableForStep[0];
+      stepIcon='🎸'; stepLabel=`「${s.title}」を弾いてみよう`;
+      stepDesc='今の自分でそのまま弾けるぞ！';
+      stepAction=`goPage('songs')`; stepColor='var(--teal)';
+    } else if(almostForStep){
+      // あと1コードで弾ける曲がある
+      stepIcon='🎯'; stepLabel=`「${almostForStep.missing[0]}」を覚えよう`;
+      stepDesc=`覚えると「${almostForStep.s.title}」が弾けるようになる！`;
+      stepAction=`goPage('chord')`; stepColor='var(--amber)';
+    } else if(learnedChords.length === 0){
+      // まだ何も覚えてない
+      stepIcon='📖'; stepLabel='まずCコードを覚えてみよう';
+      stepDesc='ギター最初の一歩！押さえ方をチェック。';
+      stepAction=`goPage('chord')`; stepColor='var(--accent)';
+    } else if(totalTodayStep === 0){
+      // 練習してない
+      stepIcon='🥁'; stepLabel='メトロノームで5分だけ練習';
+      stepDesc='短くてもOK。リズム感を鍛えよう！';
+      stepAction=`goPage('metro')`; stepColor='var(--accent)';
+    } else {
+      // 今日すでに練習してる
+      stepIcon='📝'; stepLabel='練習を記録しておこう';
+      stepDesc=`${totalTodayStep}分練習したぞ！記録して積み上げよう。`;
+      stepAction=`goPage('log')`; stepColor='var(--coral)';
+    }
+
+    stepHtml = `<div onclick="${stepAction}" style="background:var(--bg-secondary);border:1.5px solid ${stepColor};border-radius:var(--radius-lg);padding:1rem 1.2rem;cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:28px;flex-shrink:0;">${stepIcon}</div>
+      <div style="flex:1;">
+        <div style="font-size:11px;color:${stepColor};font-weight:600;margin-bottom:2px;">今日の1ステップ</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text-primary);">${stepLabel}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${stepDesc}</div>
+      </div>
+      <div style="color:${stepColor};font-size:18px;">›</div>
+    </div>`;
+    stepEl.innerHTML = stepHtml;
+  }
+
+  // ===== 弾ける曲（主役・大きく表示）=====
   const playableEl = document.getElementById('homePlayable');
   if(playableEl){
-    if(learnedChords.length === 0){
-      playableEl.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:8px;">コード表で「覚えた！」を押すと弾ける曲が表示されるよ</div>';
-    } else {
-      const playable = songs.filter(s =>
-        s.chords && s.chords.length > 0 && s.chords.every(ch=>learnedChords.includes(ch))
-      ).slice(0,3);
-      if(!playable.length){
-        const almost = songs.filter(s =>
-          s.chords && s.chords.length > 0
-        ).map(s=>({
-          s,
-          missing: s.chords.filter(ch=>!learnedChords.includes(ch))
-        })).filter(x=>x.missing.length<=2)
-        .sort((a,b)=>a.missing.length-b.missing.length).slice(0,2);
+    const playable = songs.filter(s=>s.chords&&s.chords.length>0&&s.chords.every(ch=>learnedChords.includes(ch)));
+    const almost = songs.filter(s=>s.chords&&s.chords.length>0)
+      .map(s=>({s,missing:s.chords.filter(ch=>!learnedChords.includes(ch))}))
+      .filter(x=>x.missing.length<=2).sort((a,b)=>a.missing.length-b.missing.length).slice(0,2);
 
-        playableEl.innerHTML = almost.length
-          ? '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">あと少しで弾ける曲👇</div>' +
-            almost.map(({s,missing})=>`
-            <div onclick="goPage('songs')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-primary);border-radius:8px;margin-bottom:6px;cursor:pointer;border:0.5px solid var(--border);">
-              <div><div style="font-size:13px;font-weight:600;">${s.title}</div><div style="font-size:11px;color:var(--text-secondary);">${s.artist}</div></div>
-              <div style="font-size:11px;color:var(--amber);">あと${missing.join('・')}だけ</div>
-            </div>`).join('')
-          : '<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:8px;">もう少しコードを覚えると弾ける曲が増えるよ！</div>';
-      } else {
-        playableEl.innerHTML = '<div style="font-size:12px;color:var(--teal);margin-bottom:8px;">✓ 今すぐ弾ける曲👇</div>' +
-          playable.map(s=>`
-          <div onclick="goPage('songs')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-primary);border-radius:8px;margin-bottom:6px;cursor:pointer;border:1.5px solid var(--teal);">
-            <div><div style="font-size:13px;font-weight:600;">${s.title}</div><div style="font-size:11px;color:var(--text-secondary);">${s.artist}</div></div>
-            <span style="font-size:11px;background:#1a4a1a;color:#80d080;border-radius:8px;padding:2px 8px;">弾ける！</span>
-          </div>`).join('');
-      }
+    if(learnedChords.length === 0){
+      playableEl.innerHTML = `<div onclick="goPage('chord')" style="background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-md);padding:1rem;text-align:center;cursor:pointer;">
+        <div style="font-size:24px;margin-bottom:6px;">📖</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary);">コードを覚えると表示されるよ</div>
+        <div style="font-size:12px;color:var(--accent);margin-top:4px;">コード表を開く →</div>
+      </div>`;
+    } else if(playable.length > 0){
+      playableEl.innerHTML = playable.slice(0,3).map(s=>`
+        <div onclick="goPage('songs')" style="background:var(--bg-primary);border:2px solid var(--teal);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary);">${s.title}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${s.artist} · ${s.diff}</div>
+            <div style="font-size:11px;color:var(--teal);margin-top:4px;">${s.chords.join(' · ')}</div>
+          </div>
+          <span style="background:#1a4a1a;color:#80d080;border-radius:10px;padding:4px 10px;font-size:12px;font-weight:600;white-space:nowrap;">弾ける！</span>
+        </div>`).join('');
+      if(playable.length > 3) playableEl.innerHTML += `<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:4px;">他${playable.length-3}曲 → 曲リストで確認</div>`;
+    } else {
+      playableEl.innerHTML = (almost.length ? almost.map(({s,missing})=>`
+        <div onclick="goPage('chord')" style="background:var(--bg-primary);border:1.5px solid var(--amber);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary);">${s.title}</div>
+            <div style="font-size:12px;color:var(--text-secondary);">${s.artist}</div>
+          </div>
+          <div style="text-align:right;white-space:nowrap;">
+            <div style="font-size:11px;color:var(--amber);font-weight:600;">あと</div>
+            <div style="font-size:13px;font-weight:700;color:var(--amber);">${missing.join('・')}</div>
+          </div>
+        </div>`).join('') : '') +
+        `<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:8px;">コードをもう少し覚えると弾ける曲が増えるよ！</div>`;
     }
   }
 }
@@ -1233,11 +1305,35 @@ const ALL_NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const OPEN_STRINGS=[4,9,2,7,11,4];
 const STRING_NAMES=['6弦','5弦','4弦','3弦','2弦','1弦'];
 let capo=0, tunerRunning=false, tunerStream=null, tunerCtx=null, tunerAnalyser=null, tunerRaf=null, tunerSilence=0, stringsTuned=[false,false,false,false,false,false];
+let tunerMode='acoustic'; // 'acoustic' or 'electric'
+// 各弦の開放弦周波数（チューナー用）
+const STRING_FREQS_BASE=[82.41,110.00,146.83,196.00,246.94,329.63]; // 6弦〜1弦
+function getStringFreq(i){ return STRING_FREQS_BASE[i] * Math.pow(2, capo/12); }
 // 各弦のイントーン継続フレーム数（60fps想定で60フレーム≒1秒）
-const TUNE_HOLD_FRAMES = 60;
+const TUNE_HOLD_FRAMES = 45; // 0.75秒（60fps×0.75）
 let stringHoldCount = [0,0,0,0,0,0];
 
 function getNoteForString(i){ return ALL_NOTES[(OPEN_STRINGS[i]+capo)%12]; }
+function setTunerMode(mode){
+  tunerMode = mode;
+  const acoustic = document.getElementById('tunerAcousticBtn');
+  const electric = document.getElementById('tunerElectricBtn');
+  const desc = document.getElementById('tunerModeDesc');
+  if(mode==='acoustic'){
+    acoustic.style.background='var(--accent)'; acoustic.style.color='#fff';
+    acoustic.style.border='none';
+    electric.style.background='var(--bg-secondary)'; electric.style.color='var(--text-secondary)';
+    electric.style.border='0.5px solid var(--border)';
+    desc.textContent='🎸 アコギモード — 生音向けに最適化。通常の感度で安定検出。';
+  } else {
+    electric.style.background='var(--accent)'; electric.style.color='#fff';
+    electric.style.border='none';
+    acoustic.style.background='var(--bg-secondary)'; acoustic.style.color='var(--text-secondary)';
+    acoustic.style.border='0.5px solid var(--border)';
+    desc.textContent='⚡ エレキモード — 生音が小さいエレキ向けに感度を高く設定。';
+  }
+}
+
 function buildCapo(){
   const row=document.getElementById('capoRow'); row.innerHTML='';
   for(let i=0;i<=7;i++){
@@ -1277,7 +1373,7 @@ function applyHannWindow(buf){
 function detectPitchYIN(buf, sr){
   const SIZE = buf.length;
   const HALF = Math.floor(SIZE/2);
-  const threshold = 0.10; // YIN閾値（低いほど精度高いが不安定）
+  const threshold = tunerMode==='electric' ? 0.08 : 0.12; // エレキは精度重視、アコギは安定重視
 
   // ステップ1: 差分関数
   const diff = new Float32Array(HALF);
@@ -1393,34 +1489,48 @@ function tunerDetect(){
     nb.textContent=note; nf.textContent=freq.toFixed(1)+' Hz';
     if(Math.abs(cents)<=3){
       nb.className='note-big in-tune';
-      // 各弦のキープカウントを更新
+      // 各弦のキープカウントを更新（音名+周波数で正確に判定）
+      // 1弦(E4=329Hz)と6弦(E2=82Hz)の混同を防ぐため、周波数で最も近い弦を特定
+      let closestString = -1;
+      let closestDiff = Infinity;
       for(let i=0;i<6;i++){
-        if(getNoteForString(i)===note && !stringsTuned[i]){
+        if(stringsTuned[i]) continue;
+        const targetFreq = getStringFreq(i);
+        const diff = Math.abs(freq - targetFreq);
+        // 同じ音名かつ周波数が最も近い弦を選ぶ
+        if(getNoteForString(i)===note && diff < closestDiff){
+          closestDiff = diff;
+          closestString = i;
+        }
+      }
+      for(let i=0;i<6;i++){
+        if(stringsTuned[i]) continue;
+        if(i === closestString){
           stringHoldCount[i]++;
           const pct=Math.min(100,Math.round(stringHoldCount[i]/TUNE_HOLD_FRAMES*100));
           const sc=document.getElementById('sc'+i);
           if(sc){
             if(stringHoldCount[i]>=TUNE_HOLD_FRAMES){
-              // 完了！
               stringsTuned[i]=true;
               sc.className='string-circle in-tune';
               sc.style.background='';
               sc.style.border='';
             } else {
-              // キープ中：円形プログレスで視覚化
               sc.style.background=`conic-gradient(var(--teal) ${pct*3.6}deg, var(--bg-secondary) 0deg)`;
               sc.style.border='0.5px solid var(--teal)';
             }
           }
-        } else if(getNoteForString(i)!==note && !stringsTuned[i]){
-          // 別の音が出たらカウントリセット
-          stringHoldCount[i]=0;
-          const sc=document.getElementById('sc'+i);
-          if(sc && !stringsTuned[i]){ sc.style.background=''; sc.style.border=''; }
+        } else {
+          // この弦は対象外 → カウントリセット
+          if(stringHoldCount[i]>0){
+            stringHoldCount[i]=0;
+            const sc=document.getElementById('sc'+i);
+            if(sc){ sc.style.background=''; sc.style.border=''; }
+          }
         }
       }
       const completed=stringsTuned.filter(Boolean).length;
-      nt.textContent=`イントーン ✓ — 1秒キープで完了！(${completed}/6完了)`;
+      nt.textContent=`イントーン ✓ — 0.75秒キープで完了！(${completed}/6完了)`;
     } else if(Math.abs(cents)<=8){
       // 範囲外になったらカウントリセット
       for(let i=0;i<6;i++){ if(!stringsTuned[i]){ stringHoldCount[i]=0; const sc=document.getElementById('sc'+i); if(sc){sc.style.background='';sc.style.border='';} } }
@@ -2034,8 +2144,11 @@ function renderGeeboStats(){
 function runGeebo(){
   const now=new Date(), hour=now.getHours();
   const todayLogs=practiceLogs.filter(l=>l.date===todayStr());
+  const yesterdayLogs=practiceLogs.filter(l=>l.date===daysAgoStr(1));
   const totalToday=todayLogs.reduce((a,l)=>a+l.mins,0);
+  const totalYesterday=yesterdayLogs.reduce((a,l)=>a+l.mins,0);
   const streak=calcStreak();
+  const learnedCount=learnedChords.length;
 
   const isNight=hour>=22||hour<6;
   const isMorning=hour>=6&&hour<9;
@@ -2045,26 +2158,39 @@ function runGeebo(){
 
   const lastLog=todayLogs.length>0?todayLogs[todayLogs.length-1]:null;
   const lastTitle=lastLog?lastLog.title:'';
+  const yesterdayTitle=yesterdayLogs.length>0?yesterdayLogs[yesterdayLogs.length-1].title:'';
 
   let msg='';
 
-  // 練習なし → 寄り添い。どちらの選択も肯定する
   if(totalToday===0){
-    if(isMorning)
+    // 昨日練習していたか
+    if(totalYesterday>0 && streak>=2){
+      if(isMorning)
+        msg=`おはよう！昨日も${totalYesterday}分練習してたな。<br>今日は弾いてもいいし、ゆっくり休んでもいいぞ！`;
+      else if(isEvening)
+        msg=`昨日${totalYesterday}分やってたんだな。今日はどうする？<br>弾きたいなら付き合うぜ。今日は休むのも全然アリだ！`;
+      else
+        msg=`昨日も練習してたんだな、えらいぞ。<br>今日は弾くも休むも、お前が決めていい。どっちも応援してるぜ！`;
+    } else if(streak>=7){
+      msg=`${streak}日連続で来てくれてるな。<br>今日も来てくれただけで十分だぜ。弾いてもいいし、休んでもいい！`;
+    } else if(streak>=3){
+      msg=`${streak}日続いてるぞ、ちゃんと見てる。<br>今日はどうしたい？弾きたい気分なら一緒にやろうぜ！`;
+    } else if(isMorning){
       msg=`おはよう！朝からギタラボ来てくれたじゃん。<br>今日弾くも、今日は休むも、どっちでも全然アリだぜ！`;
-    else if(isNoon)
+    } else if(isNoon){
       msg=`お昼休みにのぞいてくれてありがとな。<br>ちょっと弾くのもいいし、のんびり過ごすのも最高だぜ！`;
-    else if(isAfternoon)
+    } else if(isAfternoon){
       msg=`午後だな。今日の調子はどう？<br>弾きたいなら一緒にやろうぜ。休みたいならそれでOKだ！`;
-    else if(isEvening)
+    } else if(isEvening){
       msg=`お疲れ！今日も1日頑張ったな。<br>ギター弾く気力あればいつでも来い。今日は休むのも全然アリだぜ！`;
-    else if(isNight)
+    } else if(isNight){
       msg=`こんな時間にギタラボ来てくれたんだな。<br>弾きたい気持ちがあるなら付き合うぜ。でも体が最優先だからな！`;
-    else
+    } else {
       msg=`来てくれてよかった。<br>今日は弾いてもいいし、ただ眺めるだけでもいい。お前のペースでいこうぜ！`;
-    if(streak>=3) msg+=`<br>${streak}日続いてるの、ちゃんと見てるぞ。`;
+    }
+    // コードの覚え具合に言及
+    if(learnedCount>=10) msg+=`<br>${learnedCount}個もコード覚えてるじゃん、すごいぞ。`;
   }
-  // 練習した → 全力で肯定
   else if(totalToday>=360){
     msg=`${totalToday}分！？もうそれは本物だよ。<br>今日のお前は間違いなく昨日より上手くなってるぞ！`;
     if(lastTitle) msg+=`<br>「${lastTitle}」まで練習したのか、熱すぎる。`;
@@ -2072,6 +2198,7 @@ function runGeebo(){
   } else if(totalToday>=120){
     msg=`${totalToday}分もやったのか、すごいじゃん。<br>この積み重ねが絶対に力になってるぞ！`;
     if(lastTitle) msg+=`<br>「${lastTitle}」、どんどん馴染んできてるはずだぜ！`;
+    if(totalYesterday>0) msg+=`<br>昨日に続いて今日もやれたな。`;
     setGeeboFace('excited');
   } else if(totalToday>=60){
     msg=`${totalToday}分練習、お疲れ様。<br>十分すぎるくらいやったぞ！あとはゆっくり休んでな。`;
@@ -2079,12 +2206,12 @@ function runGeebo(){
   } else if(totalToday>=30){
     msg=`${totalToday}分、ちゃんとやったじゃん。<br>少しでも続けてるのが一番大事なんだぜ！`;
     if(streak>=5) msg+=`<br>${streak}日連続、その継続力が本物だ。`;
+    if(yesterdayTitle && yesterdayTitle===lastTitle) msg+=`<br>昨日に続いて「${lastTitle}」練習してるんだな、いい感じだぞ！`;
   } else if(totalToday>=1){
     msg=`${totalToday}分でも弾いたこと、ちゃんとすごいぞ。<br>ゼロじゃないってことが大事なんだ！`;
     if(isNight) msg+=`<br>今日もお疲れ、ゆっくり休んでな。`;
   }
 
-  // 表情
   if(totalToday>=120)        setGeeboFace('excited');
   else if(isNight||streak>=7) setGeeboFace('cool');
   else                        setGeeboFace('encourage');
