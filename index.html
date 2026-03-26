@@ -408,7 +408,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="clock-day" id="clockDay">---曜日</div>
       </div>
       <div class="user-row"><div class="avatar">U</div><div class="user-name">ユーザー</div></div>
-      <div style="font-size:10px;color:#303060;text-align:right;padding-right:2px;">v3.9.1</div>
+      <div style="font-size:10px;color:#303060;text-align:right;padding-right:2px;">v3.9.2</div>
     </div>
   </div>
 
@@ -482,12 +482,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <div id="tunerModeDesc" style="font-size:12px;color:var(--text-secondary);background:var(--bg-secondary);border-radius:8px;padding:8px 12px;margin-bottom:1rem;">🎸 アコギモード — 生音向けに最適化。通常の感度で安定検出。</div>
       <div class="tuner-wrap">
-        <div class="status-card idle" id="tunerStatus"><div class="status-dot dot-idle" id="tunerDot"></div><span id="tunerMsg">マイクを起動してください</span></div>
+        <div class="status-card idle" id="tunerStatus"><div class="status-dot dot-idle" id="tunerDot"></div><span id="tunerMsg">チューナーを起動しています...</span></div>
         <div class="vol-row" id="volRow" style="display:none">
           <div style="font-size:12px;color:var(--text-secondary);white-space:nowrap;">入力レベル</div>
           <div class="vol-bar"><div class="vol-fill" id="volFill"></div></div>
           <div style="font-size:12px;color:var(--text-secondary);min-width:36px;text-align:right;" id="volVal">0%</div>
         </div>
+
+        <!-- 基準音再生（EADGBE） -->
+        <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:12px;margin-bottom:10px;">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">🔊 基準音を鳴らす（タップで確認）</div>
+          <div style="display:flex;gap:6px;justify-content:center;" id="refStringRow">
+            <button onclick="playRefNote(5)" class="ref-btn" title="6弦E2">E<sub>2</sub></button>
+            <button onclick="playRefNote(4)" class="ref-btn" title="5弦A2">A<sub>2</sub></button>
+            <button onclick="playRefNote(3)" class="ref-btn" title="4弦D3">D<sub>3</sub></button>
+            <button onclick="playRefNote(2)" class="ref-btn" title="3弦G3">G<sub>3</sub></button>
+            <button onclick="playRefNote(1)" class="ref-btn" title="2弦B3">B<sub>3</sub></button>
+            <button onclick="playRefNote(0)" class="ref-btn" title="1弦E4">E<sub>4</sub></button>
+          </div>
+        </div>
+
         <div class="capo-card">
           <div style="font-size:13px;color:var(--text-secondary);">カポタスト（フレット）</div>
           <div class="capo-row" id="capoRow"></div>
@@ -495,10 +509,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="tuner-card">
           <div class="strings-row" id="stringsRow"></div>
-          <div style="text-align:center;">
+          <div style="text-align:center;position:relative;">
             <div class="note-big" id="noteBig">—</div>
-            <div class="note-freq" id="noteFreq">マイクを起動してください</div>
+            <div class="note-freq" id="noteFreq">ギターを弾いてください</div>
             <div class="note-target" id="noteTarget"></div>
+            <!-- チューニング完了エフェクト -->
+            <div id="tuneCompleteEffect" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;animation:popIn 0.4s ease;">✅</div>
           </div>
           <div class="meter-wrap">
             <div class="meter-bar"><div class="meter-center"></div><div class="meter-fill" id="meterFill"></div></div>
@@ -508,9 +524,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="sens-row">
             <div class="sens-label">感度</div>
             <input type="range" min="1" max="10" value="5" step="1" id="sensSlider">
-            <div style="font-size:12px;color:var(--text-secondary);min-width:20px;" id="sensVal">8</div>
+            <div style="font-size:12px;color:var(--text-secondary);min-width:20px;" id="sensVal">5</div>
           </div>
-          <button class="start-btn" id="tunerStartBtn" onclick="toggleTuner()">マイクを起動</button>
+          <button class="start-btn active" id="tunerStartBtn" onclick="toggleTuner()">停止</button>
         </div>
       </div>
     </div>
@@ -979,7 +995,11 @@ function goPage(id){
   if(id==='stroke') renderStroke(currentStrokeLesson);
   if(id==='chord_lab') renderChordLab();
   if(id==='progression') renderProgression();
-  if(id==='tuner'){ buildCapo(); buildStrings(); updateCapoNote(); }
+  if(id==='tuner'){
+    buildCapo(); buildStrings(); updateCapoNote();
+    // タブを開いたら自動でマイクON
+    setTimeout(()=>{ if(!tunerRunning) toggleTuner(); }, 300);
+  }
 }
 document.querySelectorAll('.nav-item').forEach(n=>n.onclick=()=>goPage(n.dataset.page));
 document.querySelectorAll('.bottom-nav-item').forEach(n=>n.onclick=()=>goPage(n.dataset.page));
@@ -1314,6 +1334,40 @@ const TUNE_HOLD_FRAMES = 45; // 0.75秒（60fps×0.75）
 let stringHoldCount = [0,0,0,0,0,0];
 
 function getNoteForString(i){ return ALL_NOTES[(OPEN_STRINGS[i]+capo)%12]; }
+// 基準音再生（EADGBE各弦）
+let refAudioCtx = null;
+function playRefNote(stringIdx){
+  if(!refAudioCtx || refAudioCtx.state==='closed')
+    refAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const ctx = refAudioCtx;
+  const freq = getStringFreq(stringIdx) * Math.pow(2, capo/12) / Math.pow(2, capo/12); // カポ反映済み
+  const baseFreq = STRING_FREQS_BASE[stringIdx] * Math.pow(2, capo/12);
+  const t = ctx.currentTime;
+
+  // サイン波+倍音で弦っぽい音
+  [1, 2, 3, 4].forEach((n, idx) => {
+    if(baseFreq * n > 16000) return;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = baseFreq * n;
+    const gainVal = [0.5, 0.25, 0.15, 0.08][idx];
+    g.gain.setValueAtTime(gainVal, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 2.5 / n);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 2.5);
+  });
+
+  // ボタンを光らせる
+  const btns = document.querySelectorAll('.ref-btn');
+  const idx = 5 - stringIdx; // 表示順は6弦→1弦なのでindex反転
+  if(btns[idx]){
+    btns[idx].style.background = 'var(--teal)';
+    btns[idx].style.color = '#fff';
+    setTimeout(()=>{ btns[idx].style.background=''; btns[idx].style.color=''; }, 1500);
+  }
+}
+
 function setTunerMode(mode){
   tunerMode = mode;
   const acoustic = document.getElementById('tunerAcousticBtn');
@@ -1515,6 +1569,20 @@ function tunerDetect(){
               sc.className='string-circle in-tune';
               sc.style.background='';
               sc.style.border='';
+              // 完了エフェクト
+              const eff = document.getElementById('tuneCompleteEffect');
+              if(eff){
+                eff.style.display='block';
+                eff.style.animation='popIn 0.4s ease';
+                setTimeout(()=>{
+                  eff.style.animation='fadeOut 0.5s ease forwards';
+                  setTimeout(()=>{ eff.style.display='none'; eff.style.animation=''; }, 500);
+                }, 600);
+              }
+              // 全弦完了チェック
+              if(stringsTuned.filter(Boolean).length === 6){
+                setTunerStatus('ok','🎉 全弦チューニング完了！');
+              }
             } else {
               sc.style.background=`conic-gradient(var(--teal) ${pct*3.6}deg, var(--bg-secondary) 0deg)`;
               sc.style.border='0.5px solid var(--teal)';
